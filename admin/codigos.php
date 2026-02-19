@@ -147,12 +147,11 @@ if (isset($_GET['exportar'])) {
         <span style="font-size:.8rem;color:var(--muted)" id="ultima-atualizacao">Atualizando…</span>
     </div>
     <div class="tabela-wrap" id="tabela-wrap">
-        <table class="tabela">
+        <table class="tabela" id="tabela-codigos">
             <thead>
                 <tr>
                     <th>Código</th>
                     <th>Status</th>
-                    <th>Criado em</th>
                     <th>Usado em</th>
                 </tr>
             </thead>
@@ -174,7 +173,6 @@ if (isset($_GET['exportar'])) {
                                 <span style="color:var(--warning);font-weight:600">&#9675; Disponível</span>
                             <?php endif; ?>
                         </td>
-                        <td><?php echo htmlspecialchars($c['criado_em']); ?></td>
                         <td><?php echo $c['usado_em'] ? htmlspecialchars($c['usado_em']) : '—'; ?></td>
                     </tr>
                 <?php endforeach; ?>
@@ -185,26 +183,58 @@ if (isset($_GET['exportar'])) {
 </div>
 
 <script>
+const STATUS_USADO     = '<span style="color:var(--success);font-weight:600">&#9679; Usado</span>';
+const STATUS_LIVRE     = '<span style="color:var(--warning);font-weight:600">&#9675; Disponível</span>';
+
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 async function atualizarTabela() {
     try {
-        const res  = await fetch('codigos.php?ajax_tabela=1&t=' + Date.now());
-        const html = await res.text();
-        const tmp  = document.createElement('div');
-        tmp.innerHTML = html;
-        const nova = tmp.querySelector('#tabela-wrap');
-        if (nova) {
-            document.getElementById('tabela-wrap').innerHTML = nova.innerHTML;
+        const res  = await fetch('api_codigos.php?t=' + Date.now());
+
+        // Sessão expirou → servidor redirecionou (retorna HTML, não JSON)
+        if (!res.ok || res.headers.get('content-type')?.indexOf('application/json') === -1) {
+            document.getElementById('ultima-atualizacao').innerHTML =
+                '⚠️ Sessão expirada. <a href="index.php">Fazer login</a>';
+            return;
         }
-        const stats = tmp.querySelectorAll('.stat-card .num');
-        const locais = document.querySelectorAll('.stat-card .num');
-        stats.forEach((el, i) => { if (locais[i]) locais[i].textContent = el.textContent; });
-        const agora = new Date();
+
+        const data = await res.json();
+        if (!data.ok) return;
+
+        // Atualiza contadores
+        const nums = document.querySelectorAll('.stat-card .num');
+        if (nums[0]) nums[0].textContent = data.total;
+        if (nums[1]) nums[1].textContent = data.usados;
+        if (nums[2]) nums[2].textContent = data.livres;
+
+        // Reconstrói linhas da tabela
+        const tbody = document.querySelector('#tabela-codigos tbody');
+        if (!tbody) return;
+
+        if (!data.lista.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:20px;color:var(--muted)">Nenhum código gerado ainda.</td></tr>';
+        } else {
+            tbody.innerHTML = data.lista.map(c => `
+                <tr>
+                    <td><strong style="font-family:monospace;font-size:1.05rem;letter-spacing:.1em">${esc(c.codigo)}</strong></td>
+                    <td>${c.usado ? STATUS_USADO : STATUS_LIVRE}</td>
+                    <td>${c.usado_em ? esc(c.usado_em) : '—'}</td>
+                </tr>`).join('');
+        }
+
         document.getElementById('ultima-atualizacao').textContent =
-            'Atualizado às ' + agora.toLocaleTimeString('pt-BR');
-    } catch(e) {}
+            'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+
+    } catch(e) {
+        document.getElementById('ultima-atualizacao').textContent = 'Erro ao atualizar.';
+    }
 }
+
 atualizarTabela();
-setInterval(atualizarTabela, 8000);
+setInterval(atualizarTabela, 5000);
 </script>
 
 </body>
