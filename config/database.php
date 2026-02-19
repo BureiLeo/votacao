@@ -4,6 +4,9 @@
  * Configuração PDO — edite apenas as constantes se necessário.
  */
 
+// Fuso horário do Brasil (horário de Brasília)
+date_default_timezone_set('America/Sao_Paulo');
+
 define('DB_HOST',    'localhost');
 define('DB_NAME',    'u323377136_votacao');
 define('DB_USER',    'u323377136_admin_jj');
