@@ -77,11 +77,12 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         $atual = votacaoAtiva() ? 'false' : 'true';
         $pdo->prepare("UPDATE configuracoes SET valor = ? WHERE chave = 'votacao_ativa'")->execute([$atual]);
         if ($atual === 'true') {
-            // Registra o início da votação
+            // Registra o início da votação usando horário PHP (fuso já configurado)
+            $agora = date('Y-m-d H:i:s');
             $pdo->prepare(
-                "INSERT INTO configuracoes (chave, valor) VALUES ('votacao_inicio', NOW())
-                 ON DUPLICATE KEY UPDATE valor = NOW()"
-            )->execute();
+                "INSERT INTO configuracoes (chave, valor) VALUES ('votacao_inicio', ?)
+                 ON DUPLICATE KEY UPDATE valor = VALUES(valor)"
+            )->execute([$agora]);
         }
         $sucesso = $atual === 'true' ? 'Votação ativada.' : 'Votação encerrada.';
     }
