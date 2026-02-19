@@ -1,0 +1,23 @@
+# Dependências / cache
+/vendor/
+/.cache/
+
+# Configurações locais sensíveis (caso crie um .env futuramente)
+.env
+.env.local
+
+# Banco de dados SQLite (usado no projeto antigo)
+*.db
+*.sqlite
+
+# Logs
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
