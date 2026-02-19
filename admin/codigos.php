@@ -133,6 +133,7 @@ if (isset($_GET['exportar'])) {
     <!-- Ações em lote -->
     <div class="d-flex gap-2 flex-wrap mb-2">
         <a href="?exportar=1" class="btn btn-secondary btn-sm">&#8681; Exportar disponíveis (.txt)</a>
+        <a href="imprimir_codigos.php" class="btn btn-sm" style="background:#7c3aed;color:#fff">&#128438; Imprimir códigos</a>
         <form method="POST" style="display:inline">
             <button name="limpar_nao_usados" class="btn btn-danger btn-sm"
                 onclick="return confirm('Remover TODOS os códigos não utilizados?')">

@@ -265,6 +265,7 @@ if ($logado) {
     <a href="index.php" class="ativo">&#127968; Dashboard</a>
     <a href="candidatos.php">&#128101; Candidatos</a>
     <a href="codigos.php">&#128273; Códigos</a>
+    <a href="imprimir_codigos.php">&#128438; Imprimir</a>
     <a href="../painel/index.php" target="_blank">&#128200; Painel ao Vivo &#8599;</a>
     <a href="../urna/index.php" target="_blank">&#128683; Urna &#8599;</a>
 </nav>
