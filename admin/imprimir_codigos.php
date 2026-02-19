@@ -22,6 +22,12 @@ $codigos = $pdo->query(
 )->fetchAll();
 
 $total = count($codigos);
+
+// URL da urna (dinâmica, funciona em local e produção)
+$scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$basePath = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'])), '/\\');
+$urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -93,6 +99,22 @@ $total = count($codigos);
         }
         .ticket.usado {
             opacity: .35;
+        }
+        .ticket .horario {
+            font-size: 6pt;
+            color: #888;
+            margin-top: 3px;
+            letter-spacing: .04em;
+        }
+        .ticket .qr-wrap {
+            margin: 6px auto 2px;
+            display: flex;
+            justify-content: center;
+        }
+        .ticket .qr-wrap img {
+            width:  <?php echo $largura === '58' ? '64px' : '80px'; ?>;
+            height: <?php echo $largura === '58' ? '64px' : '80px'; ?>;
+            display: block;
         }
 
         /* ── Regras de impressão ── */
@@ -183,9 +205,13 @@ $total = count($codigos);
     <div class="tickets-grid" id="tickets-grid">
         <?php foreach ($codigos as $c): ?>
         <div class="ticket <?php echo $c['usado'] ? 'usado' : ''; ?>">
-            <div class="evento" id="texto-evento">Eleição Jornada Jovem 2026</div>
+            <div class="evento">Eleição Jornada Jovem 2026</div>
             <div class="codigo"><?php echo htmlspecialchars($c['codigo']); ?></div>
+            <div class="qr-wrap">
+                <img class="qr-img" src="" alt="QR" data-url="<?php echo htmlspecialchars($urnaUrl); ?>">
+            </div>
             <div class="instrucao">Apresente este código na urna</div>
+            <div class="horario"></div>
         </div>
         <?php endforeach; ?>
         <?php if (empty($codigos)): ?>
@@ -195,6 +221,7 @@ $total = count($codigos);
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 function aplicarFiltro() {
     const f = document.getElementById('sel-filtro').value;
@@ -209,12 +236,42 @@ document.getElementById('inp-evento').addEventListener('input', function() {
     });
 });
 
-// Antes de imprimir, injeta o nome do evento atual nos tickets
+// Gera QR codes para todos os tickets
+document.querySelectorAll('.qr-img').forEach(img => {
+    const url  = img.dataset.url;
+    const size = <?php echo $largura === '58' ? 64 : 80; ?>;
+    // Usa canvas temporário para gerar data URL
+    const tmp = document.createElement('div');
+    tmp.style.display = 'none';
+    document.body.appendChild(tmp);
+    new QRCode(tmp, { text: url, width: size, height: size,
+        colorDark: '#000000', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M });
+    // Converte o canvas para img src (compatível com impressão)
+    const canvas = tmp.querySelector('canvas');
+    if (canvas) img.src = canvas.toDataURL('image/png');
+    document.body.removeChild(tmp);
+});
+
+// Formata data/hora atual
+function horaAtual() {
+    return new Date().toLocaleString('pt-BR', {
+        day:'2-digit', month:'2-digit', year:'numeric',
+        hour:'2-digit', minute:'2-digit'
+    }).replace(',', ' •');
+}
+
+// Preenche horário ao carregar
+document.querySelectorAll('#tickets-grid .horario').forEach(el => {
+    el.textContent = 'Impresso em ' + horaAtual();
+});
+
+// Antes de imprimir: atualiza nome do evento e horário
 window.addEventListener('beforeprint', function() {
     const nome = document.getElementById('inp-evento').value || 'Eleição';
-    document.querySelectorAll('#tickets-grid .evento').forEach(el => {
-        el.textContent = nome;
-    });
+    const hora = horaAtual();
+    document.querySelectorAll('#tickets-grid .evento').forEach(el => el.textContent = nome);
+    document.querySelectorAll('#tickets-grid .horario').forEach(el => el.textContent = 'Impresso em ' + hora);
 });
 </script>
 
