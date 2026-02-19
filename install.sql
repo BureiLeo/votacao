@@ -1,14 +1,14 @@
 -- ============================================================
 --  VOTAÇÃO JORNADA JOVEM — Script de instalação
---  Execute no phpMyAdmin: http://localhost/phpmyadmin
+--  Execute no phpMyAdmin: https://leoburei.com.br/phpmyadmin
 --  Aba SQL → colar tudo → Executar
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS votacao_jornada
+CREATE DATABASE IF NOT EXISTS u323377136_votacao
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE votacao_jornada;
+USE u323377136_votacao;
 
 -- ------------------------------------------------------------
 -- CARGOS FIXOS

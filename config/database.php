@@ -5,9 +5,9 @@
  */
 
 define('DB_HOST',    'localhost');
-define('DB_NAME',    'votacao_jornada');
-define('DB_USER',    'root');
-define('DB_PASS',    '');
+define('DB_NAME',    'u323377136_votacao');
+define('DB_USER',    'u323377136_admin_jj');
+define('DB_PASS',    'votacaoJJ@2026');
 define('DB_CHARSET', 'utf8mb4');
 
 /**
