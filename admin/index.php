@@ -2,6 +2,15 @@
 /**
  * admin/index.php — Login + Dashboard + Configurações
  */
+$_oitoHoras = 8 * 60 * 60;
+ini_set('session.gc_maxlifetime', $_oitoHoras);
+session_set_cookie_params([
+    'lifetime' => $_oitoHoras,
+    'path'     => '/',
+    'secure'   => isset($_SERVER['HTTPS']),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_start();
 require_once '../config/database.php';
 

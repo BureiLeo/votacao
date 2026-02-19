@@ -142,7 +142,11 @@ if (isset($_GET['exportar'])) {
     </div>
 
     <!-- Tabela de códigos -->
-    <div class="tabela-wrap">
+    <div class="d-flex" style="justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">&#128273; Códigos</h2>
+        <span style="font-size:.8rem;color:var(--muted)" id="ultima-atualizacao">Atualizando…</span>
+    </div>
+    <div class="tabela-wrap" id="tabela-wrap">
         <table class="tabela">
             <thead>
                 <tr>
@@ -178,5 +182,30 @@ if (isset($_GET['exportar'])) {
         </table>
     </div>
 </div>
+</div>
+
+<script>
+async function atualizarTabela() {
+    try {
+        const res  = await fetch('codigos.php?ajax_tabela=1&t=' + Date.now());
+        const html = await res.text();
+        const tmp  = document.createElement('div');
+        tmp.innerHTML = html;
+        const nova = tmp.querySelector('#tabela-wrap');
+        if (nova) {
+            document.getElementById('tabela-wrap').innerHTML = nova.innerHTML;
+        }
+        const stats = tmp.querySelectorAll('.stat-card .num');
+        const locais = document.querySelectorAll('.stat-card .num');
+        stats.forEach((el, i) => { if (locais[i]) locais[i].textContent = el.textContent; });
+        const agora = new Date();
+        document.getElementById('ultima-atualizacao').textContent =
+            'Atualizado às ' + agora.toLocaleTimeString('pt-BR');
+    } catch(e) {}
+}
+atualizarTabela();
+setInterval(atualizarTabela, 8000);
+</script>
+
 </body>
 </html>
