@@ -47,6 +47,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $del = $pdo->exec("DELETE FROM codigos WHERE impresso = 0 AND usado = 0");
         $sucesso = "$del código(s) não impressos removidos.";
     }
+
+    // Apagar todos os códigos não usados e reiniciar numeração do zero
+    if (isset($_POST['zerar_numeracao'])) {
+        $pdo->exec("DELETE FROM codigos WHERE usado = 0");
+        // Se não há mais nenhum código, TRUNCATE reinicia o ID do zero
+        $restantes = (int)$pdo->query("SELECT COUNT(*) FROM codigos")->fetchColumn();
+        if ($restantes === 0) {
+            $pdo->exec("TRUNCATE TABLE codigos");
+            $sucesso = 'Tabela zerada. O próximo código gerado começará do #1.';
+        } else {
+            $maxId = (int)$pdo->query("SELECT MAX(id) FROM codigos")->fetchColumn();
+            $pdo->exec("ALTER TABLE codigos AUTO_INCREMENT = " . ($maxId + 1));
+            $sucesso = "Não usados removidos. Ainda há $restantes código(s) usados — próximo ID será #" . ($maxId + 1) . ".";
+        }
+    }
 }
 
 // ------- DADOS -------
@@ -169,6 +184,12 @@ setInterval(() => {
             <button name="limpar_nao_usados" class="btn btn-danger btn-sm"
                 onclick="return confirm('Remover TODOS os códigos não utilizados?')">
                 &#128465; Limpar não utilizados
+            </button>
+        </form>
+        <form method="POST" style="display:inline">
+            <button name="zerar_numeracao" class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5"
+                onclick="return confirm('Isso vai APAGAR todos os códigos não usados e reiniciar a numeração.\n\nCódigos já utilizados serão mantidos.\n\nDeseja continuar?')">
+                &#128260; Apagar não usados + reiniciar #ID
             </button>
         </form>
     </div>
