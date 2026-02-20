@@ -112,7 +112,7 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             display: flex; justify-content: space-between; align-items: center;
         }
         .ticket .evento .num-ticket {
-            font-size: 8pt; color: #555; font-weight: 700;
+            font-size: 10pt; color: #000000; font-weight: 700;
             letter-spacing: 0; text-transform: none;
         }
         .ticket .codigo {
