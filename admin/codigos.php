@@ -73,6 +73,14 @@ if (isset($_GET['exportar'])) {
     <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
+<script>
+// Atualiza a cada 5s, mas só se nenhum campo de formulário estiver em foco
+setInterval(() => {
+    if (!document.querySelector('input:focus, select:focus, textarea:focus')) {
+        window.location.reload();
+    }
+}, 5000);
+</script>
 <div class="admin-nav-header">
     <h1>&#127891; Votação Jornada Jovem — Admin</h1>
     <form method="POST" action="index.php" style="display:inline">
