@@ -105,7 +105,7 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             break-inside: avoid;
         }
         .ticket .evento {
-            font-size: 10pt; color: #555; font-weight: bold;
+            font-size: 10pt; color: #000000; font-weight: bold;
             text-transform: uppercase; letter-spacing: .08em;
             border-bottom: 1px solid #ccc;
             padding-bottom: 4px; margin-bottom: 6px;
@@ -115,11 +115,11 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             font-weight: 900; letter-spacing: .18em; line-height: 1.1;
         }
         .ticket .instrucao {
-            font-size: 9pt; color: #666; font-weight: bold;
+            font-size: 9pt; color: #000000; font-weight: bold;
             margin-top: 5px; border-top: 1px solid #ccc; padding-top: 4px;
         }
         .ticket .horario {
-            font-size: 9pt; color: #888; font-weight: bold; margin-top: 3px; letter-spacing: .04em;
+            font-size: 9pt; color: #000000; font-weight: bold; margin-top: 3px; letter-spacing: .04em;
         }
         .ticket .qr-wrap {
             margin: 6px auto 2px;
