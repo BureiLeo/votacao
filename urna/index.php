@@ -54,23 +54,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eleição Jornada Jovem</title>
     <link rel="stylesheet" href="../assets/style.css">
+    <style>
+        .estado-tela {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            min-height: 80vh; text-align: center; padding: 40px 20px;
+        }
+        .estado-tela .icone { font-size: 5rem; margin-bottom: 20px; }
+        .estado-tela h2 { font-size: 2rem; margin-bottom: 12px; }
+        .estado-tela p  { color: #64748b; font-size: 1rem; max-width: 380px; }
+        .pontos::after {
+            content: '';
+            animation: pontos 1.5s steps(4,end) infinite;
+        }
+        @keyframes pontos {
+            0%{content:'.'} 33%{content:'..'} 66%{content:'...'} 100%{content:''}
+        }
+    </style>
+    <?php if (votacaoStatus() === 'aguardando'): ?>
+    <meta http-equiv="refresh" content="10">
+    <?php endif; ?>
 </head>
 <body>
 <div class="page-header">
     <h1>&#127891; Eleição Jornada Jovem 2026</h1>
-    <p>Informe seu código para iniciar a votação</p>
 </div>
 
+<?php $status = votacaoStatus(); ?>
+
+<?php if ($status === 'aguardando'): ?>
+<!-- ── AGUARDANDO INÍCIO ── -->
+<div class="estado-tela">
+    <div class="icone">&#9203;</div>
+    <h2>Aguardando início da votação<span class="pontos"></span></h2>
+    <p>A votação ainda não foi iniciada. Por favor, aguarde a organização abrir as urnas.</p>
+</div>
+
+<?php elseif ($status === 'encerrada' || $status === 'revelada'): ?>
+<!-- ── VOTAÇÃO ENCERRADA ── -->
+<div class="estado-tela">
+    <div class="icone">&#128683;</div>
+    <h2>Votação encerrada</h2>
+    <p>O período de votação foi encerrado. Obrigado pela sua participação!</p>
+    <?php if ($status === 'revelada'): ?>
+    <p style="margin-top:16px">
+        <a href="../painel/index.php" style="color:#4f46e5;font-weight:700">&#128200; Ver resultados &rarr;</a>
+    </p>
+    <?php endif; ?>
+</div>
+
+<?php else: ?>
+<!-- ── VOTAÇÃO ATIVA — FORMULÁRIO ── -->
 <div class="page-center" style="margin-top:-40px">
     <div class="card card-sm">
         <h2 class="text-center mb-2">&#128273; Seu Código</h2>
 
         <?php if ($erro): ?>
             <div class="alerta alerta-erro"><?php echo htmlspecialchars($erro); ?></div>
-        <?php endif; ?>
-
-        <?php if (!votacaoAtiva() && $_SERVER['REQUEST_METHOD'] !== 'POST'): ?>
-            <div class="alerta alerta-aviso">&#9888; A votação não está ativa no momento.</div>
         <?php endif; ?>
 
         <form method="POST" autocomplete="off">
@@ -91,5 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 </div>
+<?php endif; ?>
 </body>
 </html>

@@ -43,6 +43,8 @@ require_once '../config/database.php';
     } catch (PDOException $e) { /* coluna já existe */ }
     // Garante chave votacao_inicio em configuracoes
     $pdo->exec("INSERT IGNORE INTO configuracoes (chave, valor) VALUES ('votacao_inicio', '')");
+    // Garante chave encerrada em configuracoes
+    $pdo->exec("INSERT IGNORE INTO configuracoes (chave, valor) VALUES ('encerrada', 'false')");
 })();
 
 $erro    = '';
@@ -72,34 +74,43 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 
     $pdo = getDB();
 
-    // Alternar votação ativa
-    if (isset($_POST['toggle_votacao'])) {
-        $atual = votacaoAtiva() ? 'false' : 'true';
-        $pdo->prepare("UPDATE configuracoes SET valor = ? WHERE chave = 'votacao_ativa'")->execute([$atual]);
-        if ($atual === 'true') {
-            // Registra o início da votação usando horário PHP (fuso já configurado)
-            $agora = date('Y-m-d H:i:s');
-            $pdo->prepare(
-                "INSERT INTO configuracoes (chave, valor) VALUES ('votacao_inicio', ?)
-                 ON DUPLICATE KEY UPDATE valor = VALUES(valor)"
-            )->execute([$agora]);
-        }
-        $sucesso = $atual === 'true' ? 'Votação ativada.' : 'Votação encerrada.';
+    // ── Iniciar votação
+    if (isset($_POST['iniciar_votacao'])) {
+        $agora = date('Y-m-d H:i:s');
+        $pdo->exec("UPDATE configuracoes SET valor = 'true'  WHERE chave = 'votacao_ativa'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'encerrada'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'revelado'");
+        $pdo->prepare(
+            "INSERT INTO configuracoes (chave, valor) VALUES ('votacao_inicio', ?)
+             ON DUPLICATE KEY UPDATE valor = VALUES(valor)"
+        )->execute([$agora]);
+        $sucesso = '✅ Votação iniciada!';
     }
 
-    // Revelar / ocultar resultados no painel
-    if (isset($_POST['toggle_revelar'])) {
-        $jaRevelado = getConfig('revelado', 'false') === 'true';
-        $novoValor  = $jaRevelado ? 'false' : 'true';
-        // Usa INSERT ... ON DUPLICATE KEY para garantir que a linha existe
-        $stmt = $pdo->prepare(
-            "INSERT INTO configuracoes (chave, valor) VALUES ('revelado', ?)
-             ON DUPLICATE KEY UPDATE valor = VALUES(valor)"
-        );
-        $stmt->execute([$novoValor]);
-        $sucesso = $novoValor === 'true'
-            ? '🎉 Resultados REVELADOS no painel!'
-            : 'Resultados ocultados no painel.';
+    // ── Encerrar votação (sem revelar)
+    if (isset($_POST['encerrar_votacao'])) {
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'votacao_ativa'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'true'  WHERE chave = 'encerrada'");
+        $sucesso = '🔒 Votação encerrada. Resultados ainda ocultos.';
+    }
+
+    // ── Revelar resultados no painel
+    if (isset($_POST['revelar_resultados'])) {
+        $pdo->prepare(
+            "INSERT INTO configuracoes (chave, valor) VALUES ('revelado', 'true')
+             ON DUPLICATE KEY UPDATE valor = 'true'"
+        )->execute();
+        $sucesso = '🎉 Resultados REVELADOS no painel!';
+    }
+
+    // ── Ocultar resultados (volta para estado encerrada)
+    if (isset($_POST['ocultar_resultados'])) {
+        $pdo->prepare(
+            "INSERT INTO configuracoes (chave, valor) VALUES ('revelado', 'false')
+             ON DUPLICATE KEY UPDATE valor = 'false'"
+        )->execute();
+        $pdo->exec("UPDATE configuracoes SET valor = 'true' WHERE chave = 'encerrada'");
+        $sucesso = 'Resultados ocultados. Painel voltou ao modo suspense.';
     }
 
     // Zerar todos os votos (sem arquivar)
@@ -107,6 +118,8 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         $pdo->exec("DELETE FROM votos");
         $pdo->exec("UPDATE codigos SET usado = 0, usado_em = NULL");
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'revelado'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'votacao_ativa'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'encerrada'");
         $sucesso = 'Todos os votos foram zerados e os códigos foram liberados para nova votação.';
     }
 
@@ -150,6 +163,7 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
             $pdo->exec("UPDATE codigos SET usado = 0, usado_em = NULL");
             $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'revelado'");
             $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'votacao_ativa'");
+            $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'encerrada'");
             $pdo->exec("UPDATE configuracoes SET valor = '' WHERE chave = 'votacao_inicio'");
 
             $sucesso = 'Votação "' . htmlspecialchars($nomeVotacao) . '" arquivada! Sistema pronto para nova rodada.';
@@ -308,60 +322,75 @@ if ($logado) {
     </div>
 
     <!-- Controle de votação -->
-    <?php
-        $jaRevelado = getConfig('revelado', 'false') === 'true';
-    ?>
+    <?php $vStatus = votacaoStatus(); ?>
     <div class="card">
         <h2>&#9881; Controle da Votação</h2>
 
-        <div class="d-flex gap-2 flex-wrap align-center mb-2" style="margin-top:12px">
-            <div>
-                <span class="text-muted" style="font-size:.85rem">Votação:</span><br>
-                <?php if (votacaoAtiva()): ?>
-                    <strong style="color:var(--success)">&#9679; ATIVA</strong>
-                <?php else: ?>
-                    <strong style="color:var(--danger)">&#9679; ENCERRADA</strong>
-                <?php endif; ?>
+        <!-- Status visual por etapa -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px;align-items:center">
+            <?php
+            $etapas = [
+                'aguardando' => ['&#9203;', 'Aguardando',  '#64748b'],
+                'ativa'      => ['&#9654;', 'Em andamento','#16a34a'],
+                'encerrada'  => ['&#9209;', 'Encerrada',   '#dc2626'],
+                'revelada'   => ['&#127942;','Revelada',   '#d97706'],
+            ];
+            foreach ($etapas as $key => [$icon, $label, $cor]):
+                $ativo = ($vStatus === $key);
+            ?>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;
+                        background:<?php echo $ativo ? $cor : '#0f172a'; ?>;
+                        border:2px solid <?php echo $ativo ? $cor : '#334155'; ?>;
+                        font-size:.83rem;font-weight:<?php echo $ativo ? '700' : '400'; ?>;
+                        color:<?php echo $ativo ? '#fff' : '#64748b'; ?>">
+                <?php echo $icon; ?> <?php echo $label; ?>
             </div>
-            <div>
-                <span class="text-muted" style="font-size:.85rem">Painel:</span><br>
-                <?php if ($jaRevelado): ?>
-                    <strong style="color:#d97706">&#127942; Resultados REVELADOS</strong>
-                <?php else: ?>
-                    <strong style="color:var(--muted)">&#128274; Resultados ocultos</strong>
-                <?php endif; ?>
-            </div>
+            <?php endforeach; ?>
         </div>
 
-        <div class="d-flex gap-2 flex-wrap" style="margin-top:16px">
-            <!-- Botão Nova Votação (abre wizard) -->
+        <div class="d-flex gap-2 flex-wrap" style="margin-top:4px">
+            <!-- Botão Nova Votação (sempre visível) -->
             <button type="button" class="btn" style="background:#059669;color:#fff" onclick="abrirWizard()">
                 &#128257; Nova Votação
             </button>
+
+            <?php if ($vStatus === 'aguardando'): ?>
             <form method="POST">
-                <button name="toggle_votacao"
-                        class="btn <?php echo votacaoAtiva() ? 'btn-danger' : 'btn-primary'; ?>"
-                        onclick="return confirm('Deseja alterar o status da votação?')">
-                    <?php echo votacaoAtiva() ? '&#9209; Encerrar votação' : '&#9654; Ativar votação'; ?>
+                <button name="iniciar_votacao"
+                        class="btn btn-primary"
+                        onclick="return confirm('Iniciar a votação agora?')">
+                    &#9654; Iniciar votação
                 </button>
             </form>
 
+            <?php elseif ($vStatus === 'ativa'): ?>
             <form method="POST">
-                <?php if (!$jaRevelado): ?>
-                    <button name="toggle_revelar"
-                            class="btn"
-                            style="background:#d97706;color:#fff"
-                            onclick="return confirm('Revelar os resultados no painel agora? Todo mundo poderá ver os votos.')">
-                        &#127942; Revelar resultados no painel
-                    </button>
-                <?php else: ?>
-                    <button name="toggle_revelar"
-                            class="btn btn-secondary"
-                            onclick="return confirm('Ocultar os resultados? O painel voltará ao modo suspenso.')">
-                        &#128274; Ocultar resultados
-                    </button>
-                <?php endif; ?>
+                <button name="encerrar_votacao"
+                        class="btn btn-danger"
+                        onclick="return confirm('Encerrar a votação? Ninguém mais poderá votar.')">
+                    &#9209; Encerrar votação
+                </button>
             </form>
+
+            <?php elseif ($vStatus === 'encerrada'): ?>
+            <form method="POST">
+                <button name="revelar_resultados"
+                        class="btn"
+                        style="background:#d97706;color:#fff"
+                        onclick="return confirm('Revelar os resultados no painel agora?')">
+                    &#127942; Revelar resultados
+                </button>
+            </form>
+
+            <?php elseif ($vStatus === 'revelada'): ?>
+            <form method="POST">
+                <button name="ocultar_resultados"
+                        class="btn btn-secondary"
+                        onclick="return confirm('Ocultar os resultados? O painel voltará ao modo suspense.')">
+                    &#128274; Ocultar resultados
+                </button>
+            </form>
+            <?php endif; ?>
         </div>
     </div>
 

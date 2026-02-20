@@ -87,6 +87,7 @@ try {
     $revelado = getConfig('revelado', 'false') === 'true';
     $inicioStr = getConfig('votacao_inicio', '');
     $votacao_inicio_ts = ($inicioStr && $inicioStr !== '') ? strtotime($inicioStr) : null;
+    $vstatus = votacaoStatus(); // 'aguardando' | 'ativa' | 'encerrada' | 'revelada'
 
     // Enquanto não revelado, mascara votos individuais para ninguém
     // bisbilhotar a API. Mantém total_votos visível (quantos já votaram).
@@ -101,6 +102,7 @@ try {
     }
 
     echo json_encode([
+        'votacao_status'     => $vstatus,
         'votacao_ativa'      => votacaoAtiva(),
         'revelado'           => $revelado,
         'total_codigos'      => $total_codigos,

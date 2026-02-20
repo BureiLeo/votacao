@@ -226,7 +226,11 @@ async function atualizar() {
         }
 
         dot.className = 'status-dot ';
-        if (estado === 'andamento') {
+        if (estado === 'aguardando') {
+            dot.classList.add('dot-vermelho');
+            document.getElementById('status-txt').textContent = 'Aguardando início';
+            document.getElementById('subtitulo').textContent  = 'A votação ainda não foi iniciada';
+        } else if (estado === 'andamento') {
             dot.classList.add('dot-verde');
             document.getElementById('status-txt').textContent = 'Votação em andamento';
             document.getElementById('subtitulo').textContent  = 'Acompanhe em tempo real';
@@ -248,7 +252,8 @@ async function atualizar() {
         ultimoEstado = estado;
         ultimoJson   = json;
 
-        if (estado === 'andamento')     renderAndamento(data);
+        if (estado === 'aguardando')    renderAguardando();
+        else if (estado === 'andamento')     renderAndamento(data);
         else if (estado === 'suspense') renderSuspense();
         else                            renderRevelado(data, mudouParaRevelado);
 
@@ -259,11 +264,21 @@ async function atualizar() {
 }
 
 function resolveEstado(data) {
-    if (data.revelado)      return 'revelado';
-    if (data.votacao_ativa) return 'andamento';
-    return 'suspense';
+    const s = data.votacao_status;
+    if (s === 'revelada')   return 'revelado';
+    if (s === 'ativa')      return 'andamento';
+    if (s === 'encerrada')  return 'suspense';
+    return 'aguardando'; // 'aguardando' ou legado
 }
-
+// ─── MODO 0 — AGUARDANDO INÍCIO ────────────────────────────────────
+function renderAguardando() {
+    document.getElementById('conteudo').innerHTML = `
+        <div class="suspense-overlay">
+            <div class="icone">&#9203;</div>
+            <h2>Aguardando início da votação<span class="pontos"></span></h2>
+            <p>A votação ainda não foi iniciada. Este painel atualizará automaticamente.</p>
+        </div>`;
+}
 // ─── MODO 1 — EM ANDAMENTO ──────────────────────────────────
 // Candidatos visíveis, votos bloqueados, total do cargo exibido
 function renderAndamento(data) {

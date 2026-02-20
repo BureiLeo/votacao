@@ -59,9 +59,24 @@ function getConfig(string $chave, string $padrao = ''): string
 }
 
 /**
+ * Retorna o status atual da votação:
+ *   'aguardando' — antes de iniciar
+ *   'ativa'      — votação em andamento
+ *   'encerrada'  — encerrada, resultados ainda ocultos
+ *   'revelada'   — resultados revelados no painel
+ */
+function votacaoStatus(): string
+{
+    if (getConfig('revelado',       'false') === 'true') return 'revelada';
+    if (getConfig('votacao_ativa',  'false') === 'true') return 'ativa';
+    if (getConfig('encerrada',      'false') === 'true') return 'encerrada';
+    return 'aguardando';
+}
+
+/**
  * Retorna true se a votação estiver ativa.
  */
 function votacaoAtiva(): bool
 {
-    return getConfig('votacao_ativa', 'false') === 'true';
+    return votacaoStatus() === 'ativa';
 }
