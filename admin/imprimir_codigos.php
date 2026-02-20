@@ -109,6 +109,11 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             text-transform: uppercase; letter-spacing: .08em;
             border-bottom: 1px solid #ccc;
             padding-bottom: 4px; margin-bottom: 6px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .ticket .evento .num-ticket {
+            font-size: 8pt; color: #555; font-weight: 700;
+            letter-spacing: 0; text-transform: none;
         }
         .ticket .codigo {
             font-size: <?php echo $largura === '58' ? '18pt' : '22pt'; ?>;
@@ -248,7 +253,10 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
     <div class="tickets-grid" id="tickets-grid">
         <?php foreach ($codigos as $c): ?>
         <div class="ticket" data-id="<?php echo $c['id']; ?>">
-            <div class="evento">Eleição Jornada Jovem 2026</div>
+            <div class="evento">
+                <span>Eleição Jornada Jovem 2026</span>
+                <span class="num-ticket">#<?php echo $c['id']; ?></span>
+            </div>
             <div class="codigo"><?php echo htmlspecialchars($c['codigo']); ?></div>
             <div class="qr-wrap">
                 <img class="qr-img" src="" alt="QR" data-url="<?php echo htmlspecialchars($urnaUrl); ?>">
@@ -276,7 +284,7 @@ function aplicarFiltro() {
 
 // ── Nome do evento em tempo real ─────────────────────────────
 document.getElementById('inp-evento')?.addEventListener('input', function () {
-    document.querySelectorAll('#tickets-grid .evento').forEach(el => {
+    document.querySelectorAll('#tickets-grid .evento span:first-child').forEach(el => {
         el.textContent = this.value || 'Eleição';
     });
 });
@@ -310,7 +318,7 @@ document.querySelectorAll('#tickets-grid .horario').forEach(el => {
 window.addEventListener('beforeprint', function () {
     const nome = document.getElementById('inp-evento')?.value || 'Eleição';
     const hora = horaAtual();
-    document.querySelectorAll('#tickets-grid .evento').forEach(el => el.textContent = nome);
+    document.querySelectorAll('#tickets-grid .evento span:first-child').forEach(el => el.textContent = nome);
     document.querySelectorAll('#tickets-grid .horario').forEach(el => el.textContent = 'Impresso em ' + hora);
 });
 
