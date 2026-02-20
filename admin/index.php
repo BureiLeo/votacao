@@ -383,17 +383,12 @@ if ($logado) {
                 <?php if (!$liberada): ?>
                 <button name="liberar_urna"
                         class="btn"
-                        style="background:#4f46e5;color:#fff;font-size:1rem;padding:10px 22px">
-                    &#128994; Liberar urna
+                        style="background:#4f46e5;color:#fff;font-size:1rem;padding:10px 22px"
+                        onclick="return confirm('Liberar a urna agora? Todos os participantes poderão votar.')">
+                    &#128994; Liberar votação para todos
                 </button>
                 <?php else: ?>
-                <button name="liberar_urna"
-                        class="btn btn-secondary"
-                        style="opacity:.6;cursor:default"
-                        onclick="return false"
-                        disabled>
-                    &#128994; Urna liberada (aguardando votante)
-                </button>
+                <span style="color:#4ade80;font-weight:700;font-size:.9rem">&#128994; Votação liberada — participantes podem votar livremente</span>
                 <?php endif; ?>
             </form>
             <form method="POST">

@@ -32,14 +32,6 @@ unset(
     $_SESSION['votacao_csrf']
 );
 session_destroy();
-
-// Trava a urna para aguardar próxima liberação da mesa
-try {
-    getDB()->prepare(
-        "INSERT INTO configuracoes (chave, valor) VALUES ('urna_liberada', 'false')
-         ON DUPLICATE KEY UPDATE valor = 'false'"
-    )->execute();
-} catch (PDOException $e) { /* silencioso */ }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -58,19 +50,12 @@ try {
            <strong>Eleição Jornada Jovem 2026</strong>.</p>
         <p class="mt-2 text-muted">Seu voto foi registrado em todos os cargos.<br>
            Este código não pode mais ser utilizado.</p>
-        <p class="mt-2 text-muted" style="font-size:.85rem">
-            Esta tela será fechada automaticamente em <strong id="cnt">10</strong> segundos.
-        </p>
+        <div class="mt-3">
+            <a href="index.php" class="btn btn-secondary btn-full">&#8592; Nova votação (outro código)</a>
+        </div>
     </div>
 </div>
-<script>
-let s = 10;
-const el = document.getElementById('cnt');
-const t = setInterval(() => {
-    s--;
-    if (el) el.textContent = s;
-    if (s <= 0) { clearInterval(t); window.location = 'index.php'; }
-}, 1000);
-</script>
+</body>
+</html>
 </body>
 </html>

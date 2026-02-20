@@ -107,8 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!-- ── URNA TRAVADA — AGUARDANDO LIBERAÇÃO DA MESA ── -->
 <div class="estado-tela" id="tela-espera">
     <div class="icone">&#128274;</div>
-    <h2>Aguardando liberação<span class="pontos"></span></h2>
-    <p>Aguarde a mesa diretora liberar a urna para você votar.</p>
+    <h2>Votação ainda não liberada<span class="pontos"></span></h2>
+    <p>Aguarde a organização liberar a votação. Assim que liberado, você poderá digitar seu código e votar normalmente.</p>
 </div>
 <script>
 // Polling: verifica a cada 2s se a urna foi liberada
