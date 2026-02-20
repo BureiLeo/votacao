@@ -41,18 +41,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $del = $pdo->exec("DELETE FROM codigos WHERE usado = 0");
         $sucesso = "$del código(s) não utilizados removidos.";
     }
+
+    // Excluir códigos não impressos (e não usados)
+    if (isset($_POST['limpar_nao_impressos'])) {
+        $del = $pdo->exec("DELETE FROM codigos WHERE impresso = 0 AND usado = 0");
+        $sucesso = "$del código(s) não impressos removidos.";
+    }
 }
 
 // ------- DADOS -------
 $codigos = $pdo->query(
-    "SELECT id, codigo, usado, criado_em, usado_em
+    "SELECT id, codigo, usado, impresso, criado_em, usado_em
      FROM codigos
-     ORDER BY usado ASC, criado_em DESC"
+     ORDER BY usado ASC, impresso DESC, criado_em DESC"
 )->fetchAll();
 
-$total   = count($codigos);
-$usados  = array_sum(array_column($codigos, 'usado'));
-$livres  = $total - $usados;
+$total       = count($codigos);
+$usados      = array_sum(array_column($codigos, 'usado'));
+$impressos   = array_sum(array_column($codigos, 'impresso'));
+$naoImpress  = array_sum(array_map(fn($c) => (!$c['impresso'] && !$c['usado']) ? 1 : 0, $codigos));
+$livres      = $total - $usados;
 
 // Exportar lista de não-usados como texto plano
 if (isset($_GET['exportar'])) {
@@ -104,18 +112,26 @@ setInterval(() => {
     <?php endif; ?>
 
     <!-- Estatísticas rápidas -->
-    <div class="stats-grid mt-3" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stats-grid mt-3" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">
         <div class="stat-card">
-            <div class="num"><?php echo $total; ?></div>
+            <div class="num" id="stat-total"><?php echo $total; ?></div>
             <div class="desc">Total de códigos</div>
         </div>
         <div class="stat-card">
-            <div class="num" style="color:var(--success)"><?php echo $usados; ?></div>
+            <div class="num" id="stat-usados" style="color:var(--success)"><?php echo $usados; ?></div>
             <div class="desc">Utilizados</div>
         </div>
         <div class="stat-card">
-            <div class="num" style="color:var(--warning)"><?php echo $livres; ?></div>
+            <div class="num" id="stat-livres" style="color:var(--warning)"><?php echo $livres; ?></div>
             <div class="desc">Disponíveis</div>
+        </div>
+        <div class="stat-card">
+            <div class="num" id="stat-impressos" style="color:#818cf8"><?php echo $impressos; ?></div>
+            <div class="desc">Impressos</div>
+        </div>
+        <div class="stat-card">
+            <div class="num" id="stat-naoimpress" style="color:#f87171"><?php echo $naoImpress; ?></div>
+            <div class="desc">Não impressos</div>
         </div>
     </div>
 
@@ -144,6 +160,12 @@ setInterval(() => {
         <a href="?exportar=1" class="btn btn-secondary btn-sm">&#8681; Exportar disponíveis (.txt)</a>
         <a href="imprimir_codigos.php" class="btn btn-sm" style="background:#7c3aed;color:#fff">&#128438; Imprimir códigos</a>
         <form method="POST" style="display:inline">
+            <button name="limpar_nao_impressos" class="btn btn-sm" style="background:#92400e;color:#fff"
+                onclick="return confirm('Remover todos os códigos que ainda não foram impressos?')">
+                &#128465; Apagar não impressos (<?php echo $naoImpress; ?>)
+            </button>
+        </form>
+        <form method="POST" style="display:inline">
             <button name="limpar_nao_usados" class="btn btn-danger btn-sm"
                 onclick="return confirm('Remover TODOS os códigos não utilizados?')">
                 &#128465; Limpar não utilizados
@@ -161,6 +183,7 @@ setInterval(() => {
             <thead>
                 <tr>
                     <th>Código</th>
+                    <th>Impresso</th>
                     <th>Status</th>
                     <th>Usado em</th>
                 </tr>
@@ -176,6 +199,13 @@ setInterval(() => {
                         <td><strong style="font-family:monospace;font-size:1.05rem;letter-spacing:.1em">
                             <?php echo htmlspecialchars($c['codigo']); ?>
                         </strong></td>
+                        <td>
+                            <?php if ($c['impresso']): ?>
+                                <span style="color:#818cf8;font-weight:600">&#9679; Sim</span>
+                            <?php else: ?>
+                                <span style="color:#f87171;font-weight:600">&#9675; Não</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php if ($c['usado']): ?>
                                 <span style="color:var(--success);font-weight:600">&#9679; Usado</span>
@@ -195,6 +225,8 @@ setInterval(() => {
 <script>
 const STATUS_USADO     = '<span style="color:var(--success);font-weight:600">&#9679; Usado</span>';
 const STATUS_LIVRE     = '<span style="color:var(--warning);font-weight:600">&#9675; Disponível</span>';
+const STATUS_IMP_SIM   = '<span style="color:#818cf8;font-weight:600">&#9679; Sim</span>';
+const STATUS_IMP_NAO   = '<span style="color:#f87171;font-weight:600">&#9675; Não</span>';
 
 function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -214,11 +246,12 @@ async function atualizarTabela() {
         const data = await res.json();
         if (!data.ok) return;
 
-        // Atualiza contadores
-        const nums = document.querySelectorAll('.stat-card .num');
-        if (nums[0]) nums[0].textContent = data.total;
-        if (nums[1]) nums[1].textContent = data.usados;
-        if (nums[2]) nums[2].textContent = data.livres;
+        const upd = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
+        upd('stat-total',      data.total);
+        upd('stat-usados',     data.usados);
+        upd('stat-livres',     data.livres);
+        upd('stat-impressos',  data.impressos);
+        upd('stat-naoimpress', data.naoImpress);
 
         // Reconstrói linhas da tabela
         const tbody = document.querySelector('#tabela-codigos tbody');
@@ -230,6 +263,7 @@ async function atualizarTabela() {
             tbody.innerHTML = data.lista.map(c => `
                 <tr>
                     <td><strong style="font-family:monospace;font-size:1.05rem;letter-spacing:.1em">${esc(c.codigo)}</strong></td>
+                    <td>${c.impresso ? STATUS_IMP_SIM : STATUS_IMP_NAO}</td>
                     <td>${c.usado ? STATUS_USADO : STATUS_LIVRE}</td>
                     <td>${c.usado_em ? esc(c.usado_em) : '—'}</td>
                 </tr>`).join('');

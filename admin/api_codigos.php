@@ -11,20 +11,24 @@ require '_auth.php';
 
 try {
     $codigos = getDB()->query(
-        "SELECT codigo, usado, criado_em, usado_em
+        "SELECT codigo, usado, impresso, criado_em, usado_em
          FROM codigos
-         ORDER BY usado ASC, criado_em DESC"
+         ORDER BY usado ASC, impresso DESC, criado_em DESC"
     )->fetchAll();
 
-    $total  = count($codigos);
-    $usados = array_sum(array_column($codigos, 'usado'));
+    $total      = count($codigos);
+    $usados     = array_sum(array_column($codigos, 'usado'));
+    $impressos  = array_sum(array_column($codigos, 'impresso'));
+    $naoImpress = array_sum(array_map(fn($c) => (!$c['impresso'] && !$c['usado']) ? 1 : 0, $codigos));
 
     echo json_encode([
-        'ok'     => true,
-        'total'  => $total,
-        'usados' => $usados,
-        'livres' => $total - $usados,
-        'lista'  => $codigos,
+        'ok'         => true,
+        'total'      => $total,
+        'usados'     => $usados,
+        'livres'     => $total - $usados,
+        'impressos'  => $impressos,
+        'naoImpress' => $naoImpress,
+        'lista'      => $codigos,
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {
