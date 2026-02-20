@@ -2,10 +2,10 @@
 /**
  * admin/index.php — Login + Dashboard + Configurações
  */
-$_oitoHoras = 8 * 60 * 60;
-ini_set('session.gc_maxlifetime', $_oitoHoras);
+$_umaHora = 60 * 60;
+ini_set('session.gc_maxlifetime', $_umaHora);
 session_set_cookie_params([
-    'lifetime' => $_oitoHoras,
+    'lifetime' => $_umaHora,
     'path'     => '/',
     'secure'   => isset($_SERVER['HTTPS']),
     'httponly' => true,
@@ -63,7 +63,8 @@ if (isset($_POST['sair'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['senha']) && empty($_SESSION['admin_logado'])) {
     $hash  = getConfig('admin_hash', '');
     if ($hash && password_verify($_POST['senha'], $hash)) {
-        $_SESSION['admin_logado'] = true;
+        $_SESSION['admin_logado']           = true;
+        $_SESSION['admin_ultima_atividade'] = time();
     } else {
         $erro = 'Senha incorreta.';
         // Pequeno delay para dificultar brute-force
@@ -271,6 +272,9 @@ if ($logado) {
         <h2 class="text-center mb-2">&#128274; Área Administrativa</h2>
         <?php if ($erro): ?>
             <div class="alerta alerta-erro"><?php echo htmlspecialchars($erro); ?></div>
+        <?php endif; ?>
+        <?php if (($_GET['sessao'] ?? '') === 'expirada'): ?>
+            <div class="alerta alerta-aviso">&#9201; Sua sessão expirou após 1 hora de inatividade. Faça login novamente.</div>
         <?php endif; ?>
         <form method="POST" autocomplete="off">
             <div class="form-group">
