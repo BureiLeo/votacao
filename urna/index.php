@@ -103,8 +103,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 </div>
 
+<?php elseif (!urnaLiberada()): ?>
+<!-- ── URNA TRAVADA — AGUARDANDO LIBERAÇÃO DA MESA ── -->
+<div class="estado-tela" id="tela-espera">
+    <div class="icone">&#128274;</div>
+    <h2>Aguardando liberação<span class="pontos"></span></h2>
+    <p>Aguarde a mesa diretora liberar a urna para você votar.</p>
+</div>
+<script>
+// Polling: verifica a cada 2s se a urna foi liberada
+(function poll() {
+    fetch('status.php?t=' + Date.now())
+        .then(r => r.json())
+        .then(data => {
+            if (data.urna_liberada) {
+                window.location.reload();
+            } else {
+                setTimeout(poll, 2000);
+            }
+        })
+        .catch(() => setTimeout(poll, 3000));
+})();
+</script>
+
 <?php else: ?>
-<!-- ── VOTAÇÃO ATIVA — FORMULÁRIO ── -->
+<!-- ── URNA LIBERADA — FORMULÁRIO ── -->
 <div class="page-center" style="margin-top:-40px">
     <div class="card card-sm">
         <h2 class="text-center mb-2">&#128273; Seu Código</h2>

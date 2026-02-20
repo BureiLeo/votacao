@@ -43,6 +43,8 @@ require_once '../config/database.php';
     } catch (PDOException $e) { /* coluna já existe */ }
     // Garante chave votacao_inicio em configuracoes
     $pdo->exec("INSERT IGNORE INTO configuracoes (chave, valor) VALUES ('votacao_inicio', '')");
+    // Garante chave urna_liberada em configuracoes
+    $pdo->exec("INSERT IGNORE INTO configuracoes (chave, valor) VALUES ('urna_liberada', 'false')");
     // Garante chave encerrada em configuracoes
     $pdo->exec("INSERT IGNORE INTO configuracoes (chave, valor) VALUES ('encerrada', 'false')");
 })();
@@ -74,12 +76,22 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 
     $pdo = getDB();
 
+    // ── Liberar urna para próxima pessoa
+    if (isset($_POST['liberar_urna'])) {
+        $pdo->prepare(
+            "INSERT INTO configuracoes (chave, valor) VALUES ('urna_liberada', 'true')
+             ON DUPLICATE KEY UPDATE valor = 'true'"
+        )->execute();
+        $sucesso = '🟢 Urna liberada! A próxima pessoa pode votar.';
+    }
+
     // ── Iniciar votação
     if (isset($_POST['iniciar_votacao'])) {
         $agora = date('Y-m-d H:i:s');
         $pdo->exec("UPDATE configuracoes SET valor = 'true'  WHERE chave = 'votacao_ativa'");
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'encerrada'");
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'revelado'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'urna_liberada'");
         $pdo->prepare(
             "INSERT INTO configuracoes (chave, valor) VALUES ('votacao_inicio', ?)
              ON DUPLICATE KEY UPDATE valor = VALUES(valor)"
@@ -120,6 +132,7 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'revelado'");
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'votacao_ativa'");
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'encerrada'");
+        $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'urna_liberada'");
         $sucesso = 'Todos os votos foram zerados e os códigos foram liberados para nova votação.';
     }
 
@@ -164,6 +177,7 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
             $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'revelado'");
             $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'votacao_ativa'");
             $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'encerrada'");
+            $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'urna_liberada'");
             $pdo->exec("UPDATE configuracoes SET valor = '' WHERE chave = 'votacao_inicio'");
 
             $sucesso = 'Votação "' . htmlspecialchars($nomeVotacao) . '" arquivada! Sistema pronto para nova rodada.';
@@ -364,6 +378,24 @@ if ($logado) {
             </form>
 
             <?php elseif ($vStatus === 'ativa'): ?>
+            <?php $liberada = urnaLiberada(); ?>
+            <form method="POST">
+                <?php if (!$liberada): ?>
+                <button name="liberar_urna"
+                        class="btn"
+                        style="background:#4f46e5;color:#fff;font-size:1rem;padding:10px 22px">
+                    &#128994; Liberar urna
+                </button>
+                <?php else: ?>
+                <button name="liberar_urna"
+                        class="btn btn-secondary"
+                        style="opacity:.6;cursor:default"
+                        onclick="return false"
+                        disabled>
+                    &#128994; Urna liberada (aguardando votante)
+                </button>
+                <?php endif; ?>
+            </form>
             <form method="POST">
                 <button name="encerrar_votacao"
                         class="btn btn-danger"

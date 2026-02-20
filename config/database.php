@@ -59,6 +59,14 @@ function getConfig(string $chave, string $padrao = ''): string
 }
 
 /**
+ * Retorna true se a urna estiver liberada para receber o próximo votante.
+ */
+function urnaLiberada(): bool
+{
+    return getConfig('urna_liberada', 'false') === 'true';
+}
+
+/**
  * Retorna o status atual da votação:
  *   'aguardando' — antes de iniciar
  *   'ativa'      — votação em andamento
