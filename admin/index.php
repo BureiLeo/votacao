@@ -3,7 +3,15 @@
  * admin/index.php — Login + Dashboard + Configurações
  */
 $_umaHora = 60 * 60;
+
+// Diretório de sessão próprio do projeto (evita GC do servidor compartilhado)
+$_sessDir = __DIR__ . '/../config/sessions';
+if (!is_dir($_sessDir)) mkdir($_sessDir, 0700, true);
+session_save_path($_sessDir);
+
 ini_set('session.gc_maxlifetime', $_umaHora);
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_divisor',     100);
 session_set_cookie_params([
     'lifetime' => $_umaHora,
     'path'     => '/',

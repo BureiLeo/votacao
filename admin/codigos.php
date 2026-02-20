@@ -74,10 +74,11 @@ if (isset($_GET['exportar'])) {
 </head>
 <body>
 <script>
-// Atualiza a cada 5s, mas só se nenhum campo de formulário estiver em foco
+// Atualiza a cada 5s com timestamp na URL para evitar cache do navegador
 setInterval(() => {
     if (!document.querySelector('input:focus, select:focus, textarea:focus')) {
-        window.location.reload();
+        const url = window.location.pathname + '?_t=' + Date.now();
+        window.location.replace(url);
     }
 }, 5000);
 </script>

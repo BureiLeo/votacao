@@ -2,6 +2,9 @@
 /vendor/
 /.cache/
 
+# Arquivos de sessão PHP (gerados em runtime)
+/config/sessions/sess_*
+
 # Configurações locais sensíveis (caso crie um .env futuramente)
 .env
 .env.local
