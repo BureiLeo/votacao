@@ -203,6 +203,7 @@ setInterval(() => {
         <table class="tabela" id="tabela-codigos">
             <thead>
                 <tr>
+                    <th style="color:var(--muted);font-weight:500">#ID</th>
                     <th>Código</th>
                     <th>Impresso</th>
                     <th>Status</th>
@@ -211,12 +212,13 @@ setInterval(() => {
             </thead>
             <tbody>
                 <?php if (empty($codigos)): ?>
-                    <tr><td colspan="4" class="text-center" style="padding:20px;color:var(--muted)">
+                    <tr><td colspan="5" class="text-center" style="padding:20px;color:var(--muted)">
                         Nenhum código gerado ainda.
                     </td></tr>
                 <?php endif; ?>
                 <?php foreach ($codigos as $c): ?>
                     <tr>
+                        <td style="color:var(--muted);font-size:.8rem;white-space:nowrap">#<?php echo $c['id']; ?></td>
                         <td><strong style="font-family:monospace;font-size:1.05rem;letter-spacing:.1em">
                             <?php echo htmlspecialchars($c['codigo']); ?>
                         </strong></td>
@@ -279,10 +281,11 @@ async function atualizarTabela() {
         if (!tbody) return;
 
         if (!data.lista.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:20px;color:var(--muted)">Nenhum código gerado ainda.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:20px;color:var(--muted)">Nenhum código gerado ainda.</td></tr>';
         } else {
             tbody.innerHTML = data.lista.map(c => `
                 <tr>
+                    <td style="color:var(--muted);font-size:.8rem;white-space:nowrap">#${esc(c.id)}</td>
                     <td><strong style="font-family:monospace;font-size:1.05rem;letter-spacing:.1em">${esc(c.codigo)}</strong></td>
                     <td>${c.impresso ? STATUS_IMP_SIM : STATUS_IMP_NAO}</td>
                     <td>${c.usado ? STATUS_USADO : STATUS_LIVRE}</td>

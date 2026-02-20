@@ -31,7 +31,7 @@ $where = match($filtro) {
 
 $limit   = $quantidade > 0 ? "LIMIT $quantidade" : '';
 $codigos = $pdo->query(
-    "SELECT id, codigo, usado FROM codigos $where ORDER BY criado_em ASC $limit"
+    "SELECT id, codigo, usado FROM codigos $where ORDER BY id ASC $limit"
 )->fetchAll();
 
 $total = count($codigos);

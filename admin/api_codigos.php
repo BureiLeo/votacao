@@ -11,7 +11,7 @@ require '_auth.php';
 
 try {
     $codigos = getDB()->query(
-        "SELECT codigo, usado, impresso, criado_em, usado_em
+        "SELECT id, codigo, usado, impresso, criado_em, usado_em
          FROM codigos
          ORDER BY usado ASC, impresso DESC, criado_em DESC"
     )->fetchAll();
