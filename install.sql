@@ -53,11 +53,13 @@ INSERT INTO candidatos (nome, cargo_id) VALUES
 -- CÓDIGOS ÚNICOS DE VOTAÇÃO
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS codigos (
-    id        INT AUTO_INCREMENT PRIMARY KEY,
-    codigo    VARCHAR(20)  NOT NULL UNIQUE,
-    usado     TINYINT(1)   NOT NULL DEFAULT 0,
-    criado_em DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    usado_em  DATETIME         NULL DEFAULT NULL
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    codigo       VARCHAR(20)  NOT NULL UNIQUE,
+    usado        TINYINT(1)   NOT NULL DEFAULT 0,
+    criado_em    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usado_em     DATETIME         NULL DEFAULT NULL,
+    impresso     TINYINT(1)   NOT NULL DEFAULT 0,
+    impresso_em  DATETIME         NULL DEFAULT NULL
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------

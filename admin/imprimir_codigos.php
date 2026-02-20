@@ -7,21 +7,43 @@ require '_auth.php';
 
 $pdo = getDB();
 
-// Filtro: todos | disponiveis | usados
-$filtro = $_GET['filtro'] ?? 'disponiveis';
-$largura = $_GET['largura'] ?? '80'; // 58mm ou 80mm
+// ── Auto-migração: adiciona colunas de controle de impressão se não existirem ──
+foreach ([
+    "ALTER TABLE codigos ADD COLUMN impresso     TINYINT(1) NOT NULL DEFAULT 0   AFTER usado_em",
+    "ALTER TABLE codigos ADD COLUMN impresso_em  DATETIME       NULL DEFAULT NULL AFTER impresso",
+] as $sql) {
+    try { $pdo->exec($sql); } catch (PDOException $e) { /* coluna já existe */ }
+}
+
+// Parâmetros
+$filtro     = $_GET['filtro']     ?? 'nao_impressos';
+$largura    = $_GET['largura']    ?? '80';
+$quantidade = isset($_GET['quantidade']) && $_GET['quantidade'] !== '0'
+                ? max(1, (int)$_GET['quantidade'])
+                : 0; // 0 = todos
 
 $where = match($filtro) {
-    'usados'     => 'WHERE usado = 1',
-    'todos'      => '',
-    default      => 'WHERE usado = 0',
+    'usados'       => 'WHERE usado = 1',
+    'todos'        => '',
+    'disponiveis'  => 'WHERE usado = 0',
+    default        => 'WHERE impresso = 0 AND usado = 0',   // nao_impressos
 };
 
+$limit   = $quantidade > 0 ? "LIMIT $quantidade" : '';
 $codigos = $pdo->query(
-    "SELECT codigo, usado FROM codigos $where ORDER BY criado_em ASC"
+    "SELECT id, codigo, usado FROM codigos $where ORDER BY criado_em ASC $limit"
 )->fetchAll();
 
 $total = count($codigos);
+
+// Contagem geral
+$stats = $pdo->query(
+    "SELECT
+        SUM(usado=0 AND impresso=0) AS fila,
+        SUM(impresso=1)             AS ja_impressos,
+        SUM(usado=1)                AS ja_usados
+     FROM codigos"
+)->fetch();
 
 // URL da urna (dinâmica, funciona em local e produção)
 $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -43,7 +65,7 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             border: 1px solid #334155;
             border-radius: 10px;
             padding: 20px 24px;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             display: flex;
             gap: 16px;
             flex-wrap: wrap;
@@ -55,6 +77,13 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             border:1px solid #334155; border-radius:6px;
             padding:7px 10px; font-size:.9rem;
         }
+
+        .info-bar {
+            font-size:.83rem; color:#94a3b8;
+            margin-bottom:14px;
+            display:flex; gap:18px; flex-wrap:wrap;
+        }
+        .info-bar span strong { color:#f1f5f9; }
 
         /* ── Preview dos tickets na tela ── */
         .tickets-grid {
@@ -76,45 +105,34 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
             break-inside: avoid;
         }
         .ticket .evento {
-            font-size: 7pt;
-            color: #555;
-            text-transform: uppercase;
-            letter-spacing: .08em;
+            font-size: 10pt; color: #555; font-weight: bold;
+            text-transform: uppercase; letter-spacing: .08em;
             border-bottom: 1px solid #ccc;
-            padding-bottom: 4px;
-            margin-bottom: 6px;
+            padding-bottom: 4px; margin-bottom: 6px;
         }
         .ticket .codigo {
             font-size: <?php echo $largura === '58' ? '18pt' : '22pt'; ?>;
-            font-weight: 900;
-            letter-spacing: .18em;
-            line-height: 1.1;
+            font-weight: 900; letter-spacing: .18em; line-height: 1.1;
         }
         .ticket .instrucao {
-            font-size: 6.5pt;
-            color: #666;
-            margin-top: 5px;
-            border-top: 1px solid #ccc;
-            padding-top: 4px;
-        }
-        .ticket.usado {
-            opacity: .35;
+            font-size: 9pt; color: #666; font-weight: bold;
+            margin-top: 5px; border-top: 1px solid #ccc; padding-top: 4px;
         }
         .ticket .horario {
-            font-size: 6pt;
-            color: #888;
-            margin-top: 3px;
-            letter-spacing: .04em;
+            font-size: 9pt; color: #888; font-weight: bold; margin-top: 3px; letter-spacing: .04em;
         }
         .ticket .qr-wrap {
             margin: 6px auto 2px;
-            display: flex;
-            justify-content: center;
+            display: flex; justify-content: center;
         }
         .ticket .qr-wrap img {
             width:  <?php echo $largura === '58' ? '64px' : '80px'; ?>;
             height: <?php echo $largura === '58' ? '64px' : '80px'; ?>;
             display: block;
+        }
+
+        #btn-imprimir.loading {
+            opacity: .6; pointer-events: none; cursor: wait;
         }
 
         /* ── Regras de impressão ── */
@@ -123,32 +141,21 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
                 size: <?php echo $largura === '58' ? '58mm' : '80mm'; ?> auto;
                 margin: 2mm;
             }
-
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
             body { background: #fff !important; margin: 0; padding: 0; }
 
-            /* Esconde tudo que não é ticket */
             .controles, .admin-nav-header, .admin-nav,
-            nav, header, h1, h2, .alerta, .btn-imprimir-wrap { display: none !important; }
+            nav, header, h1, h2, .alerta, .info-bar,
+            #btn-imprimir-wrap { display: none !important; }
 
-            .tickets-grid {
-                display: block;
-                gap: 0;
-            }
-
+            .tickets-grid { display: block; gap: 0; }
             .ticket {
-                width: auto !important;
-                border: none !important;
+                width: auto !important; border: none !important;
                 border-bottom: 1px dashed #999 !important;
                 border-radius: 0 !important;
-                margin: 0 !important;
-                padding: 6px 2mm !important;
-                page-break-inside: avoid;
-                break-inside: avoid;
+                margin: 0 !important; padding: 6px 2mm !important;
+                page-break-inside: avoid; break-inside: avoid;
             }
-
-            .ticket.usado { display: none; }
         }
     </style>
 </head>
@@ -175,9 +182,24 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
         <div>
             <label>Filtro</label>
             <select id="sel-filtro">
-                <option value="disponiveis" <?php echo $filtro==='disponiveis'?'selected':''; ?>>Somente disponíveis</option>
-                <option value="todos"       <?php echo $filtro==='todos'      ?'selected':''; ?>>Todos</option>
+                <option value="nao_impressos" <?php echo $filtro==='nao_impressos'?'selected':''; ?>>
+                    Não impressos ainda<?php if ($stats['fila'] > 0): ?> (<?php echo (int)$stats['fila']; ?> na fila)<?php endif; ?>
+                </option>
+                <option value="disponiveis" <?php echo $filtro==='disponiveis'?'selected':''; ?>>Todos disponíveis</option>
                 <option value="usados"      <?php echo $filtro==='usados'     ?'selected':''; ?>>Somente usados</option>
+                <option value="todos"       <?php echo $filtro==='todos'      ?'selected':''; ?>>Todos</option>
+            </select>
+        </div>
+        <div>
+            <label>Quantidade a imprimir</label>
+            <select id="sel-quantidade">
+                <?php
+                $opts = [1 => '1', 5 => '5', 10 => '10', 25 => '25', 50 => '50', 100 => '100', 0 => 'Todos'];
+                foreach ($opts as $v => $l):
+                    $sel = ($quantidade === $v || ($v === 0 && $quantidade === 0)) ? 'selected' : '';
+                ?>
+                <option value="<?php echo $v; ?>" <?php echo $sel; ?>><?php echo $l; ?></option>
+                <?php endforeach; ?>
             </select>
         </div>
         <div>
@@ -193,24 +215,45 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
         </div>
         <div style="display:flex;gap:8px">
             <button class="btn btn-secondary btn-sm" onclick="aplicarFiltro()">&#8635; Atualizar</button>
-            <button class="btn btn-primary" onclick="window.print()">&#128438; Imprimir <?php echo $total; ?> código<?php echo $total!==1?'s':''; ?></button>
         </div>
     </div>
 
-    <p class="text-muted" style="font-size:.82rem;margin-bottom:12px">
-        Pré-visualização — <?php echo $total; ?> código(s) · Papel <?php echo $largura; ?>mm
-    </p>
+    <!-- Info + botão de impressão -->
+    <div class="info-bar">
+        <span>&#128220; Na fila: <strong><?php echo (int)$stats['fila']; ?></strong></span>
+        <span>&#128438; Já impressos: <strong><?php echo (int)$stats['ja_impressos']; ?></strong></span>
+        <span>&#9989; Já votaram: <strong><?php echo (int)$stats['ja_usados']; ?></strong></span>
+        <span>Mostrando: <strong><?php echo $total; ?> ticket<?php echo $total!==1?'s':''; ?></strong></span>
+    </div>
+
+    <div id="btn-imprimir-wrap" style="margin-bottom:16px">
+        <?php if ($total > 0): ?>
+        <button id="btn-imprimir" class="btn btn-primary" onclick="marcarEImprimir()">
+            &#128438; Imprimir <?php echo $total; ?> código<?php echo $total!==1?'s':''; ?>
+        </button>
+        <span style="font-size:.8rem;color:#94a3b8;margin-left:10px">
+            Após a impressão esses códigos saem da fila e não aparecem novamente.
+        </span>
+        <?php else: ?>
+        <p class="text-muted" style="font-size:.9rem">
+            &#9989; Nenhum código pendente com o filtro selecionado.
+            <?php if ($filtro === 'nao_impressos' && (int)$stats['ja_impressos'] > 0): ?>
+            Todos os <?php echo (int)$stats['ja_impressos']; ?> código(s) já foram impressos.
+            <?php endif; ?>
+        </p>
+        <?php endif; ?>
+    </div>
 
     <!-- Tickets -->
     <div class="tickets-grid" id="tickets-grid">
         <?php foreach ($codigos as $c): ?>
-        <div class="ticket <?php echo $c['usado'] ? 'usado' : ''; ?>">
+        <div class="ticket" data-id="<?php echo $c['id']; ?>">
             <div class="evento">Eleição Jornada Jovem 2026</div>
             <div class="codigo"><?php echo htmlspecialchars($c['codigo']); ?></div>
             <div class="qr-wrap">
                 <img class="qr-img" src="" alt="QR" data-url="<?php echo htmlspecialchars($urnaUrl); ?>">
             </div>
-            <div class="instrucao">Apresente este código na urna</div>
+            <div class="instrucao">Utilize esse codigo para votar!</div>
             <div class="horario"></div>
         </div>
         <?php endforeach; ?>
@@ -223,56 +266,96 @@ $urnaUrl  = $scheme . '://' . $host . $basePath . '/urna/';
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+// ── Navegação ────────────────────────────────────────────────
 function aplicarFiltro() {
     const f = document.getElementById('sel-filtro').value;
     const l = document.getElementById('sel-largura').value;
-    window.location = 'imprimir_codigos.php?filtro=' + f + '&largura=' + l;
+    const q = document.getElementById('sel-quantidade').value;
+    window.location = 'imprimir_codigos.php?filtro=' + f + '&largura=' + l + '&quantidade=' + q;
 }
 
-// Atualiza o texto do evento em tempo real nos tickets
-document.getElementById('inp-evento').addEventListener('input', function() {
+// ── Nome do evento em tempo real ─────────────────────────────
+document.getElementById('inp-evento')?.addEventListener('input', function () {
     document.querySelectorAll('#tickets-grid .evento').forEach(el => {
         el.textContent = this.value || 'Eleição';
     });
 });
 
-// Gera QR codes para todos os tickets
+// ── QR codes ─────────────────────────────────────────────────
 document.querySelectorAll('.qr-img').forEach(img => {
     const url  = img.dataset.url;
     const size = <?php echo $largura === '58' ? 64 : 80; ?>;
-    // Usa canvas temporário para gerar data URL
-    const tmp = document.createElement('div');
+    const tmp  = document.createElement('div');
     tmp.style.display = 'none';
     document.body.appendChild(tmp);
     new QRCode(tmp, { text: url, width: size, height: size,
         colorDark: '#000000', colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M });
-    // Converte o canvas para img src (compatível com impressão)
     const canvas = tmp.querySelector('canvas');
     if (canvas) img.src = canvas.toDataURL('image/png');
     document.body.removeChild(tmp);
 });
 
-// Formata data/hora atual
+// ── Data/hora ─────────────────────────────────────────────────
 function horaAtual() {
     return new Date().toLocaleString('pt-BR', {
         day:'2-digit', month:'2-digit', year:'numeric',
         hour:'2-digit', minute:'2-digit'
     }).replace(',', ' •');
 }
-
-// Preenche horário ao carregar
 document.querySelectorAll('#tickets-grid .horario').forEach(el => {
     el.textContent = 'Impresso em ' + horaAtual();
 });
 
-// Antes de imprimir: atualiza nome do evento e horário
-window.addEventListener('beforeprint', function() {
-    const nome = document.getElementById('inp-evento').value || 'Eleição';
+window.addEventListener('beforeprint', function () {
+    const nome = document.getElementById('inp-evento')?.value || 'Eleição';
     const hora = horaAtual();
     document.querySelectorAll('#tickets-grid .evento').forEach(el => el.textContent = nome);
     document.querySelectorAll('#tickets-grid .horario').forEach(el => el.textContent = 'Impresso em ' + hora);
 });
+
+// ── Marcar como impresso → depois imprimir ───────────────────
+async function marcarEImprimir() {
+    const btn = document.getElementById('btn-imprimir');
+    if (!btn) return;
+
+    const ids = Array.from(
+        document.querySelectorAll('#tickets-grid .ticket[data-id]')
+    ).map(el => parseInt(el.dataset.id, 10)).filter(Boolean);
+
+    if (ids.length === 0) { window.print(); return; }
+
+    btn.classList.add('loading');
+    btn.textContent = '⏳ Preparando…';
+
+    try {
+        const res = await fetch('api_marcar_impresso.php', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ ids })
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+            alert('Erro ao registrar impressão: ' + (data.erro ?? 'desconhecido'));
+            btn.classList.remove('loading');
+            btn.textContent = '🖨️ Imprimir';
+            return;
+        }
+
+        // Imprime e recarrega após fechar o diálogo
+        window.print();
+        window.addEventListener('afterprint', function onAfter() {
+            window.removeEventListener('afterprint', onAfter);
+            window.location.reload();
+        }, { once: true });
+
+    } catch (err) {
+        alert('Falha na comunicação com o servidor.');
+        btn.classList.remove('loading');
+        btn.textContent = '🖨️ Imprimir';
+    }
+}
 </script>
 
 </body>
