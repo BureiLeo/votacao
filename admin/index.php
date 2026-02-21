@@ -414,6 +414,14 @@ if ($logado) {
                 <?php endif; ?>
             </form>
             <form method="POST">
+                <button name="revelar_resultados"
+                        class="btn"
+                        style="background:#d97706;color:#fff"
+                        onclick="return confirm('Revelar os resultados no painel agora?')">
+                    &#127942; Revelar resultados
+                </button>
+            </form>
+            <form method="POST">
                 <button name="encerrar_votacao"
                         class="btn btn-danger"
                         onclick="return confirm('Encerrar a votação? Ninguém mais poderá votar.\n\nVotos incompletos (de quem não terminou) serão descartados automaticamente.')">
