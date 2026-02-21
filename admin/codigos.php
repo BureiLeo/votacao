@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Se não há mais nenhum código, TRUNCATE reinicia o ID do zero
         $restantes = (int)$pdo->query("SELECT COUNT(*) FROM codigos")->fetchColumn();
         if ($restantes === 0) {
-            $pdo->exec("TRUNCATE TABLE codigos");
+            $pdo->exec("ALTER TABLE codigos AUTO_INCREMENT = 1");
             $sucesso = 'Tabela zerada. O próximo código gerado começará do #1.';
         } else {
             $maxId = (int)$pdo->query("SELECT MAX(id) FROM codigos")->fetchColumn();
