@@ -12,6 +12,21 @@ if (empty($_SESSION['votacao_codigo_id']) || empty($_SESSION['votacao_cargos']))
     exit();
 }
 
+// --- Votação ainda ativa? ---
+$_statusVot = votacaoStatus();
+if ($_statusVot !== 'ativa') {
+    // Limpa sessão e avisa a pessoa
+    unset(
+        $_SESSION['votacao_codigo_id'],
+        $_SESSION['votacao_cargos'],
+        $_SESSION['votacao_cargo_idx'],
+        $_SESSION['votacao_csrf']
+    );
+    session_destroy();
+    header('Location: index.php?encerrada=1');
+    exit();
+}
+
 $codigo_id = (int)$_SESSION['votacao_codigo_id'];
 $cargos    = $_SESSION['votacao_cargos'];
 $idx       = (int)($_SESSION['votacao_cargo_idx'] ?? 0);

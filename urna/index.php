@@ -14,6 +14,11 @@ if (!empty($_SESSION['votacao_codigo_id'])) {
 
 $erro = '';
 
+// Votação encerrada enquanto a pessoa estava no meio
+if (isset($_GET['encerrada'])) {
+    $erro = 'A votação foi encerrada pela organização antes de você concluir. Seus votos parciais foram descartados.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $codigo = strtoupper(trim($_POST['codigo'] ?? ''));
 
