@@ -112,7 +112,17 @@ if (!empty($_SESSION['admin_logado']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     if (isset($_POST['encerrar_votacao'])) {
         $pdo->exec("UPDATE configuracoes SET valor = 'false' WHERE chave = 'votacao_ativa'");
         $pdo->exec("UPDATE configuracoes SET valor = 'true'  WHERE chave = 'encerrada'");
-        $sucesso = '🔒 Votação encerrada. Resultados ainda ocultos.';
+
+        // Remove votos parciais: códigos que iniciaram mas não concluíram (usado = 0)
+        $incompletos = $pdo->exec(
+            "DELETE FROM votos WHERE codigo_id IN (SELECT id FROM codigos WHERE usado = 0)"
+        );
+
+        $msg = '🔒 Votação encerrada. Resultados ainda ocultos.';
+        if ($incompletos > 0) {
+            $msg .= " ($incompletos registro(s) de votação incompleta descartado(s))";
+        }
+        $sucesso = $msg;
     }
 
     // ── Revelar resultados no painel
@@ -406,7 +416,7 @@ if ($logado) {
             <form method="POST">
                 <button name="encerrar_votacao"
                         class="btn btn-danger"
-                        onclick="return confirm('Encerrar a votação? Ninguém mais poderá votar.')">
+                        onclick="return confirm('Encerrar a votação? Ninguém mais poderá votar.\n\nVotos incompletos (de quem não terminou) serão descartados automaticamente.')">
                     &#9209; Encerrar votação
                 </button>
             </form>

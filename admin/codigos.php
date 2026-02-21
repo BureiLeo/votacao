@@ -97,13 +97,10 @@ if (isset($_GET['exportar'])) {
 </head>
 <body>
 <script>
-// Atualiza a cada 5s com timestamp na URL para evitar cache do navegador
+// Mantém a sessão ativa com ping silencioso a cada 60s (sem recarregar a página)
 setInterval(() => {
-    if (!document.querySelector('input:focus, select:focus, textarea:focus')) {
-        const url = window.location.pathname + '?_t=' + Date.now();
-        window.location.replace(url);
-    }
-}, 5000);
+    fetch('_auth.php', { method: 'HEAD', credentials: 'same-origin' }).catch(() => {});
+}, 60000);
 </script>
 <div class="admin-nav-header">
     <h1>&#127891; Votação Jornada Jovem — Admin</h1>
